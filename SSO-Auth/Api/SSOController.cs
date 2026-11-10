@@ -520,9 +520,18 @@ public class SSOController : ControllerBase
 
         if (config.Enabled)
         {
-            foreach (var kvp in StateManager)
+            foreach (var kvp in StateManager.ToArray())
             {
-                if (kvp.Value.State.State.Equals(response.Data) && kvp.Value.Valid)
+                if (!kvp.Value.State.State.Equals(response.Data))
+                {
+                    continue;
+                }
+
+                // Matching state entry: always evict it, success or failure,
+                // so a replay or a half-finished flow cannot reuse it.
+                StateManager.TryRemove(kvp.Key, out _);
+
+                if (kvp.Value.Valid)
                 {
                     Guid userId = await CreateCanonicalLinkAndUserIfNotExist("oid", provider, kvp.Value.Username);
 
@@ -538,7 +547,6 @@ public class SSOController : ControllerBase
                         config.DefaultProvider?.Trim(),
                         kvp.Value.AvatarURL)
                         .ConfigureAwait(false);
-                    StateManager.TryRemove(kvp.Key, out _);
                     return Ok(authenticationResult);
                 }
             }
