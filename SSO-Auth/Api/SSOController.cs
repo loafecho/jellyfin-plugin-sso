@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -48,7 +49,7 @@ public class SSOController : ControllerBase
     private readonly IProviderManager _providerManager;
     private readonly IServerConfigurationManager _serverConfigurationManager;
     private readonly IHttpClientFactory _httpClientFactory;
-    private static readonly IDictionary<string, TimedAuthorizeState> StateManager = new Dictionary<string, TimedAuthorizeState>();
+    private static readonly ConcurrentDictionary<string, TimedAuthorizeState> StateManager = new ConcurrentDictionary<string, TimedAuthorizeState>();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SSOController"/> class.
@@ -417,7 +418,7 @@ public class SSOController : ControllerBase
                 return ReturnError(StatusCodes.Status400BadRequest, $"Error preparing login: {state.Error} - {state.ErrorDescription}");
             }
 
-            StateManager.Add(state.State, new TimedAuthorizeState(state, DateTime.Now));
+            StateManager[state.State] = new TimedAuthorizeState(state, DateTime.Now);
 
             // Track whether this is a linking request or not.
             StateManager[state.State].IsLinking = isLinking;
@@ -537,7 +538,7 @@ public class SSOController : ControllerBase
                         config.DefaultProvider?.Trim(),
                         kvp.Value.AvatarURL)
                         .ConfigureAwait(false);
-                    StateManager.Remove(kvp.Key);
+                    StateManager.TryRemove(kvp.Key, out _);
                     return Ok(authenticationResult);
                 }
             }
@@ -1275,7 +1276,7 @@ public class SSOController : ControllerBase
             var now = DateTime.Now;
             if (now.Subtract(kvp.Value.Created).TotalMinutes > 1)
             {
-                StateManager.Remove(kvp.Key);
+                StateManager.TryRemove(kvp.Key, out _);
             }
         }
     }
