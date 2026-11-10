@@ -339,9 +339,9 @@ public class SSOController : ControllerBase
             else
             {
                 _logger.LogWarning(
-                    "OpenID user {Username} has one or more incorrect role claims: {@Claims}. Expected any one of: {@ExpectedClaims}",
+                    "OpenID user {Username} has one or more incorrect role claims. Received claim types: {ClaimTypes}. Expected any one of: {@ExpectedClaims}",
                     timedState.Username,
-                    result.User.Claims.Select(o => new { o.Type, o.Value }),
+                    result.User.Claims.Select(o => o.Type).Distinct().ToArray(),
                     config.Roles);
 
                 return ReturnError(StatusCodes.Status401Unauthorized, "Error. Check permissions.");
