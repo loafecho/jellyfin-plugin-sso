@@ -1271,10 +1271,10 @@ public class SSOController : ControllerBase
 
     private void Invalidate()
     {
-        foreach (var kvp in StateManager)
+        var cutoff = DateTime.Now.AddMinutes(-1);
+        foreach (var kvp in StateManager.ToArray())
         {
-            var now = DateTime.Now;
-            if (now.Subtract(kvp.Value.Created).TotalMinutes > 1)
+            if (kvp.Value.Created < cutoff)
             {
                 StateManager.TryRemove(kvp.Key, out _);
             }
